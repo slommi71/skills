@@ -1,0 +1,78 @@
+---
+name: requirements-interview
+description: Systematically clarifies an ambiguous problem or task via a round-based interview and records the current state as a decision graph. Use this skill whenever the user presents a task where the starting point, goal, or constraints are unclear—especially with requests like "help me with X," "we need to decide on Y," or "I don't know exactly what I want," as well as for architecture, migration, and selection decisions, or when the user explicitly asks for follow-up questions, a discovery session, or requirements clarification. Also apply this when the user does not explicitly ask for questions but the task would otherwise require guesswork to complete.
+---
+
+# Requirements Interview
+
+Goal: To move from a vague request to a robust, mutually agreed-upon description of the problem and solution—without guessing and without overwhelming the user with questions.
+
+The primary tool is a **decision graph**. It serves as the single source of truth regarding the status of clarification and is visibly updated in every round.
+
+## Ground Rules
+
+**Research beats questioning.** Anything that can be determined from available sources (file system, repository, Git history, issue tracker, documentation, the web) should be retrieved—not asked for. Questions should only cover information known exclusively to the user: goals, priorities, constraints, preferences, and organizational details. Asking a question when the answer is already in the repository is a mistake.
+
+**Guessing is forbidden; documented assumptions are allowed.** If something can neither be determined via research nor answered by the user, it is marked as an assumption (status `ASSUMED`), accompanied by a rationale and the consequences should it prove incorrect. Making a silent assumption is a mistake; making a visible one is a legitimate working method. 
+**Research before questioning, within the same turn.** No processes run while the user is answering—
+processing is turn-based. The sequence for each turn is therefore: first, evaluate all
+available sources (in parallel where possible, or via sub-agents if the environment
+supports them), then derive the questions for the next round from that information. Questions
+are never formulated before the research phase; otherwise, they would contain information
+already known.
+
+**Question budget.** A maximum of 3–7 questions per round. Prioritization is based on:
+1. Leverage — which answer renders the most follow-up questions unnecessary?
+2. Irreversibility — which decision would be most costly to change later?
+3. Blocking effect — what is preventing any further progress?
+Low-leverage questions are deferred rather than asked.
+
+## The Graph
+
+**Nodes** represent decisions. **Edges** lead to options. If an option is selected, it
+becomes a decision node at the next level—this is how the graph grows.
+
+Each node has a stable ID (`E1`, `E1.2`, …) and exactly one status:
+
+| Status | Meaning |
+|---|---|
+| `OPEN` | Not yet decided; question is pending or has been asked |
+| `DECIDED` | User has made a choice, or research has clearly answered the question |
+| `ASSUMED` | User does not know / delegates; assumption documented, open to revision |
+| `DISCARDED` | Branch rendered obsolete by a higher-level decision |
+
+Visualized as a Mermaid flowchart, supplemented by a brief status table. The graph is
+re-rendered in full at the start of each round—not as a diff. Discarded branches remain
+visible so that the reasoning behind not pursuing a specific path remains traceable.
+
+## Round Workflow
+
+1. **Research.** Evaluate available sources. Record new facts along with their sources. 2. **Update the graph.** New nodes, status changes, discarded branches.
+3. **Show facts and assumptions.** What has been added since the last round, and where did it come from?
+4. **Ask questions.** 3–7 questions, based on the prioritization above, using the format below.
+5. **Incorporate answers**, then return to step 1.
+3–5 rounds is a realistic guideline. However, the termination criterion is the deciding factor, not
+the number of rounds.
+
+## Question format
+
+Questions are numbered sequentially across rounds and carry the ID of the node to which
+they belong—enabling cross-referencing between users and the graph.
+
+```
+[E2.1] Q7: Should the migration take place in a single step or in stages? 
+O: (a) Big Bang  (b) Parallel operation with cutover  (c) Module by module
+R: (b) — given your data volume, a rollback would otherwise not be feasible.
+```
+
+- `Q` — the question; precise and answerable individually (no compound questions).
+- `A` — selection options, if the solution space is meaningfully closed. Otherwise, omit rather
+than artificially inventing options. With closed options, always implicitly allow for "something else."
+- `R` — recommendation with justification, if a justifiable one exists. A recommendation without
+justification is worthless; better to offer none at all.
+`A` and `R` are kept separate because they serve different purposes: options structure the
+solution space, while the recommendation takes a position within it.
+
+## Handling "I don't know" / "You decide"
+
+Do not ask...
